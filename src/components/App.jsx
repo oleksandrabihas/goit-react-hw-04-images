@@ -46,7 +46,7 @@ export class App extends Component {
   onSubmitSearchImages = query => {
     this.setState(prevState => {
       if (prevState.query === query) {
-        return null
+        return null;
       } else {
         return { query, list: [], page: 1 };
       }

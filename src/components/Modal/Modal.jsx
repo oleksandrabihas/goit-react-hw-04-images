@@ -1,35 +1,34 @@
-import { Component } from 'react';
+import { useCallback, useEffect } from 'react';
 import { ModalOverLay } from './Modal.styled';
 import PropTypes from 'prop-types';
 
-export class Modal extends Component {
-  componentDidMount() {
-    window.addEventListener('keydown', this.closeModal);
-  }
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.closeModal);
-    
-  }
+export const Modal = ({ modalData, onModalClose }) => {
+  const closeModal = useCallback(
+    e => {
+      if (e.target === e.currentTarget || e.code === 'Escape') {
+        onModalClose();
+      }
+    },
+    [onModalClose]
+  );
 
-  closeModal = e => {
-    if (e.target === e.currentTarget || e.code === 'Escape') {
-      this.props.onModalClose();
-    }
-  };
+  useEffect(() => {
+    window.addEventListener('keydown', closeModal);
+    return () => {
+      window.removeEventListener('keydown', closeModal);
+    };
+  }, [closeModal]);
 
-  render() {
-    const {
-      modalData: { largeImage, tags },
-    } = this.props;
-    return (
-      <ModalOverLay onClick={this.closeModal}>
-        <div>
-          <img src={largeImage} alt={tags} />
-        </div>
-      </ModalOverLay>
-    );
-  }
-}
+  const { largeImage, tags } = modalData;
+
+  return (
+    <ModalOverLay onClick={closeModal}>
+      <div>
+        <img src={largeImage} alt={tags} />
+      </div>
+    </ModalOverLay>
+  );
+};
 
 Modal.propTypes = {
   modalData: PropTypes.shape({
