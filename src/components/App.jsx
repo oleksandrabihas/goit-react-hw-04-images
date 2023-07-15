@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect, createContext } from 'react';
 import { fetchImages } from 'api';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
@@ -8,22 +8,25 @@ import { Modal } from './Modal/Modal';
 import toast, { Toaster } from 'react-hot-toast';
 import { animateScroll as scroll } from 'react-scroll';
 import { Wrapper } from './App.styled';
+import { ErrorMessage } from './Error/Error';
 
-export class App extends Component {
-  state = {
-    list: [],
-    page: 1,
-    query: '',
-    isLoading: false,
-    loadMore: false,
-    modalData: null,
-    isModalVisible: false,
-  };
+export const GalleryContext = createContext();
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { page, query } = this.state;
-    if (page !== prevState.page || query !== prevState.query) {
-      this.setState({ isLoading: true });
+export const App = () => {
+  const [list, setList] = useState([]);
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadMore, setLoadMore] = useState(false);
+  const [modalData, setModalData] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!query) return;
+
+    (async () => {
+      setIsLoading(true);
       try {
         const { hits, totalHits } = await fetchImages(query, page);
         if (hits.length === 0) {
@@ -31,61 +34,60 @@ export class App extends Component {
             'Oops... there are no images matching your search... Try again'
           );
         }
-        this.setState(prevState => ({
-          list: [...prevState.list, ...hits],
-          loadMore: this.state.page < Math.ceil(totalHits / 12),
-        }));
+        setList(prev => [...prev, ...hits]);
+        setLoadMore(page < Math.ceil(totalHits / 12));
       } catch (error) {
         console.log(error.message);
+        setError(true);
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
-    }
-  }
+    })();
+  }, [query, page]);
 
-  onSubmitSearchImages = query => {
-    this.setState(prevState => {
-      if (prevState.query === query) {
-        return null;
-      } else {
-        return { query, list: [], page: 1 };
-      }
-    });
+  const onSubmitSearchImages = query1 => {
+    if (query !== query1) {
+      setQuery(query1);
+      setList([]);
+      setPage(1);
+    } else {
+      setQuery(null);
+    }
   };
 
-  handleClickLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleClickLoadMore = () => {
+    setPage(prev => prev + 1);
     scroll.scrollMore(500, {
       duration: 500,
       smooth: 'easeInOutQuart',
     });
   };
 
-  onModalOpen = (largeImage, tags) => {
-    this.setState({ modalData: { largeImage, tags }, isModalVisible: true });
+  const onModalOpen = (largeImage, tags) => {
+    setModalData({ largeImage, tags });
+    setIsModalVisible(true);
     document.body.classList.add('no-scroll');
   };
 
-  onModalClose = () => {
-    this.setState({ isModalVisible: false, modalData: null });
+  const onModalClose = () => {
+    setIsModalVisible(false);
+    setModalData(null);
     document.body.classList.remove('no-scroll');
   };
 
-  render() {
-    const { list, isLoading, loadMore, modalData, isModalVisible } = this.state;
-    return (
-      <Wrapper>
-        <Searchbar onSubmitSearchImages={this.onSubmitSearchImages} />
-        <Toaster />
-        {list && (
-          <ImageGallery gallery={list} onImageClick={this.onModalOpen} />
-        )}
-        {isLoading && <Loader />}
-        {loadMore && <Button onClick={this.handleClickLoadMore} />}
+  return (
+    <Wrapper>
+      <Searchbar onSubmitSearchImages={onSubmitSearchImages} />
+      <Toaster />
+      <GalleryContext.Provider value={list}>
+        {list && <ImageGallery onImageClick={onModalOpen} />}
         {isModalVisible && (
-          <Modal modalData={modalData} onModalClose={this.onModalClose} />
+          <Modal modalData={modalData} onModalClose={onModalClose} />
         )}
-      </Wrapper>
-    );
-  }
-}
+      </GalleryContext.Provider>
+      {isLoading && <Loader />}
+      {loadMore && <Button onClick={handleClickLoadMore} />}
+      {error && <ErrorMessage />}
+    </Wrapper>
+  );
+};

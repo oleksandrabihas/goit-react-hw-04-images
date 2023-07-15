@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { ModalOverLay } from './Modal.styled';
 import PropTypes from 'prop-types';
 
+
 export const Modal = ({ modalData, onModalClose }) => {
   const closeModal = useCallback(
     e => {
